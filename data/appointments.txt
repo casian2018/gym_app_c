@@ -1,0 +1,2 @@
+1|1|1|2026-05-05|18:00|PT|Scheduled|Upper body session
+2|2|2|2026-05-06|09:30|Yoga|Scheduled|Mobility focus

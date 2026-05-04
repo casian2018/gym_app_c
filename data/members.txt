@@ -1,0 +1,4 @@
+1|Alex Ionescu|28|0712345678|alex@example.com|Monthly|2026-05-01|2026-06-01|Active
+2|Maria Popescu|34|0722222222|maria@example.com|Yearly|2026-01-15|2027-01-15|Active
+3|Dan Marin|42|0733333333|dan@example.com|Quarterly|2026-01-01|2026-04-01|Expired
+4|Casian|19|0729459468|dev@ctp.one|Quarterly|2026-05-04|2026-08-04|Active

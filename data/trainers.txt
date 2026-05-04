@@ -1,0 +1,2 @@
+1|Elena Dobre|Strength|0744444444|elena@gym.com|35.00|Active
+2|Victor Stan|Yoga|0755555555|victor@gym.com|30.00|Active
