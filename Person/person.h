@@ -12,6 +12,11 @@ public:
     Person( std::string,int, std::string, std::string);
     virtual ~Person() = default;
     virtual void displayInfo() const=0;
+
+    int getAge() const;
+    std::string getName() const;
+    std::string getEmail() const;
+    std::string getPhoneNumber() const;
 };
 
 #endif

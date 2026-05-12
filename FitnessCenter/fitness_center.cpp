@@ -1,30 +1,15 @@
-#include <iostream>
-#include "fitness_center.h"
-using namespace std;
+#include "Fitness_Center.h"
+#include <utility>
+#include <string>
+Fitness_Center::Fitness_Center(std::string n) : gymName(std::move(n)) {}
 
-class fitness_center
-{
-private:
-    /* data */
-public:
-    fitness_center(/* args */);
-    ~fitness_center();
-};
-
-fitness_center::fitness_center(/* args */)
-{
+void Fitness_Center::addMember(const Member &m) {
+    members.push_back(std::make_shared<Member>(m));
 }
 
-fitness_center::~fitness_center()
-{
+void Fitness_Center::addTrainer(const Trainer &t) {
+    trainers.push_back(std::make_shared<Trainer>(t));
 }
 
 
-fitness_center::fitness_center(/* args */)
-{
-}
 
-int main() {
-
-    return 0;
-}
