@@ -17,6 +17,8 @@ public:
     void addMember(const Member& m);
     void addTrainer(const Trainer& t);
     void displayAll() const;
+    void saveToFile(const std::string& filename);
+    void loadFromFile(const std::string& filename);
 
 };
 
