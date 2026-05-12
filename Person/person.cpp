@@ -1,25 +1,6 @@
-#include <iostream>
-#include "person.h"
-using namespace std;
+#include "Person.h"
+#include <string>
+#include <utility>
 
-class person
-{
-private:
-    /* data */
-public:
-    person(/* args */);
-    ~person();
-};
+Person::Person(std::string n,int a,std::string e,std::string p) : name(std::move(n)), age(a), email(std::move(e)), phoneNumber(std::move(p)) {}
 
-person::person(/* args */)
-{
-}
-
-person::~person()
-{
-}
-
-int main() {
-    person p;
-    return 0;
-}

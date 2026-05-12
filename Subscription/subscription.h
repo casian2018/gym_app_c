@@ -11,7 +11,6 @@ private:
     std::string validUntil;
 
 public:
-    subscription();
     subscription(const std::string& type, float price, const std::string& validUntil);
 
     const std::string& getType() const;
