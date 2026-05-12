@@ -6,8 +6,8 @@
       "type": "lldb",
       "request": "launch",
       "args": [],
-      "cwd": "/Users/casian.dev/Documents/GitHub/gym_app_c",
-      "program": "/Users/casian.dev/Documents/GitHub/gym_app_c/build/Debug/outDebug"
+      "cwd": "/home/casian/Documents/codes/gym_app_c",
+      "program": "/home/casian/Documents/codes/gym_app_c/build/Debug/outDebug"
     }
   ]
 }

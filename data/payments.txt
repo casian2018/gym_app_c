@@ -1,3 +1,0 @@
-1|1|45.00|2026-05-01|card|Monthly subscription
-2|2|399.00|2026-01-15|bank|Yearly subscription
-3|4|120.00|2026-05-04|card|3 Months subscription
