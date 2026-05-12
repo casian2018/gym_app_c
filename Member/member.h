@@ -8,7 +8,8 @@ protected:
   int memberId;
 
 public:
-   Subscription(std::string t, float p, std::string v);
+   Member(int id, std::string name, std::string email, std::string phone, std::string membershipType);
+    void displayInfo() const override;
 };
 
 #endif
