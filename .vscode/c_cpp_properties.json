@@ -5,7 +5,7 @@
       "includePath": [
         "${workspaceFolder}/**"
       ],
-      "compilerPath": "clang",
+      "compilerPath": "CLion",
       "cStandard": "${default}",
       "cppStandard": "${default}",
       "intelliSenseMode": "linux-clang-x64",
