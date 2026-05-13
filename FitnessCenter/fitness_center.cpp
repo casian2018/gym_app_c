@@ -44,9 +44,36 @@ void Fitness_Center::loadFromFile(const std::string &filename) {
     members.clear();
     trainers.clear();
 
+    char type;
+
+    while (file >> type) {
+        if (type == 'M') {
+            int id,age;
+            std::string name,email,phone,subType;
+
+            file >> id >> name >> age >> email >> phone >> subType;
+
+            Subscription subTemp(subType, "N/A");
+            Member newMem(id, name, age, email, phone, subTemp);
+            addMember(newMem);
+        }
+        else if (type == 'T') {
+            int age;
+            std::string name, email,phone, specialization,tId;
+
+            file >> name >> age >> email >> phone >> specialization >> tId;
+            Trainer newTr(name, age, email, phone,  specialization,tId);
+
+            addTrainer(newTr);
+        }
+
+    }
+    std::cout << "Data has loaded succesfuly" << filename << "!\n";
+    }
 
 
-}
+
+
 
 
 

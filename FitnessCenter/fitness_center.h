@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "../Member/Member.h"
 #include "../Trainer/Trainer.h"
+
 class Fitness_Center {
 private:
     std::vector<std::shared_ptr<Member>> members;
