@@ -10,7 +10,7 @@ protected:
    std::string validUntil;
 
 public:
-   Subscription(std::string t, float p, std::string v);
+   Subscription(std::string t, std::string v);
 
    std::string getType() const;
    float getPrice() const;

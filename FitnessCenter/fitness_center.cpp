@@ -25,11 +25,11 @@ void Fitness_Center::saveToFile(const std::string& filename) {
     }
 
     for (const auto& m : members) {
-        file << "M "<< m->getId() << " "<<m->getName() << " " << m->getAge() << " " << m->getEmail() << " " << m->getPhoneNumber() << m->getSubscriptionType() << "\n\n";
+        file << "M "<< m->getId() << " "<<m->getName() << " " << m->getAge() << " " << m->getEmail() << " " << m->getPhoneNumber() <<" "<< m->getSubscriptionType() << "\n\n";
     }
 
     for (const auto& t : trainers) {
-        file << "T " <<t->getId() << t->getName() << " " << t->getAge() << " " << t->getEmail() << " " << t->getPhoneNumber() << "\n";
+        file << "T " <<t->getId() <<" "<< t->getName() << " " << t->getAge() << " " << t->getEmail() << " " << t->getPhoneNumber() << "\n";
     }
 }
 
