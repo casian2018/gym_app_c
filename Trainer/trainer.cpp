@@ -3,7 +3,7 @@
 #include <utility>
 #include <iostream>
 
-Trainer::Trainer(std::string n, int a, std::string e, std::string p,  std::string s,std::string tId) : Person(std::move(n), a, std::move(e), std::move(p)), specialization(std::move(s)), trainerId(std::move(tId))  {}
+Trainer::Trainer(std::string n, int a, std::string e, std::string p,  std::string s,int tId) : Person(std::move(n), a, std::move(e), std::move(p)), specialization(std::move(s)), trainerId(tId)  {}
 
 void Trainer::displayInfo() const {
         std::cout << "--------------------------" << std::endl;

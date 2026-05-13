@@ -5,13 +5,13 @@
 class Trainer : public Person{
 private:
     std::string specialization;
-    std::string trainerId;
+    int trainerId;
 
 public:
-    Trainer(std::string,int,std::string,std::string, std::string, std::string);
+    Trainer(std::string,int,std::string,std::string, std::string, int);
 
     void displayInfo() const override;
-    std::string getId() const {return trainerId;}
+    int getId() const {return trainerId;}
 
 };
 
