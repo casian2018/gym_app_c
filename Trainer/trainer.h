@@ -11,6 +11,7 @@ public:
     Trainer(std::string,int,std::string,std::string, std::string, std::string);
 
     void displayInfo() const override;
+    std::string getId() const {return trainerId;}
 
 };
 

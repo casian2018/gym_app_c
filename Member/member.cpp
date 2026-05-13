@@ -22,3 +22,7 @@ void Member::displayInfo() const {
         cout << "Contact: " << email << " | " << phoneNumber << endl;
         cout << "--------------------------" << endl;
 }
+
+int Member::getId() const {
+    return memberId;
+}

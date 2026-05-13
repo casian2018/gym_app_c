@@ -14,6 +14,8 @@ public:
     Member(int id, std::string name, int age, std::string email, std::string phone, Subscription membershipType);
 
     void displayInfo() const override;
+    int getId() const;
+    std::string getSubscriptionType() const { return sub.getType(); }
 };
 
 #endif

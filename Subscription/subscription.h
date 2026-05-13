@@ -11,6 +11,10 @@ protected:
 
 public:
    Subscription(std::string t, float p, std::string v);
+
+   std::string getType() const;
+   float getPrice() const;
+   std::string getValidation() const;
 };
 
 #endif
