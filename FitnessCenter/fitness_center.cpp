@@ -40,7 +40,6 @@ void Fitness_Center::loadFromFile(const std::string &filename) {
         std::cout<<"Error";
         return;
     }
-
     members.clear();
     trainers.clear();
 
@@ -59,10 +58,11 @@ void Fitness_Center::loadFromFile(const std::string &filename) {
         }
         else if (type == 'T') {
             int age;
-            std::string name, email,phone, specialization,tId;
+            std::string name, email, phone, specialization;
+            int tId;
 
             file >> name >> age >> email >> phone >> specialization >> tId;
-            Trainer newTr(name, age, email, phone,  specialization,tId);
+            Trainer newTr(name, age, email, phone, specialization, tId);
 
             addTrainer(newTr);
         }
@@ -70,6 +70,28 @@ void Fitness_Center::loadFromFile(const std::string &filename) {
     }
     std::cout << "Data has loaded succesfuly" << filename << "!\n";
     }
+
+
+void Fitness_Center::displayAll() const {
+    std::cout << "=== " << gymName << " - All Members and Trainers ===\n";
+    if (members.empty()) {
+        std::cout << "No members available." << std::endl;
+    } else {
+        std::cout << "Members:\n";
+        for (const auto &m : members) {
+            if (m) m->displayInfo();
+        }
+    }
+
+    if (trainers.empty()) {
+        std::cout << "No trainers available." << std::endl;
+    } else {
+        std::cout << "Trainers:\n";
+        for (const auto &t : trainers) {
+            if (t) t->displayInfo();
+        }
+    }
+}
 
 
 
