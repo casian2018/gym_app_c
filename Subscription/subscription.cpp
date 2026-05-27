@@ -14,7 +14,7 @@ Subscription::Subscription(std::string t,std::string v) : type(std::move(t)), va
         price = 90.0f;
     }
     else {
-        std::cout<<"Invalid Subscription Type";
+        price = 0.0f;
     }
 }
 
@@ -28,6 +28,27 @@ std::string Subscription::getType() const {
 
 std::string Subscription::getValidation() const {
     return validUntil;
+}
+
+void Subscription::setType(const std::string& t) {
+    type = t;
+    if (t == "Basic") {
+        price = 120.0f;
+    } else if (t == "Premium") {
+        price = 200.0f;
+    } else if (t == "Student") {
+        price = 90.0f;
+    } else {
+        price = 0.0f;
+    }
+}
+
+void Subscription::setPrice(float newPrice) {
+    price = newPrice;
+}
+
+void Subscription::setValidation(const std::string& v) {
+    validUntil = v;
 }
 
 

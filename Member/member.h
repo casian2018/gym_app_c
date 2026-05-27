@@ -6,16 +6,19 @@
 
 class Member : public Person {
 protected:
-    int memberId;
+    long long memberId;
     Subscription sub;
 
 public:
 
-    Member(int id, std::string name, int age, std::string email, std::string phone, Subscription membershipType);
+    Member(long long id, std::string name, int age, std::string email, std::string phone, Subscription membershipType);
+    Member(std::string name, int age, std::string email, std::string phone, Subscription membershipType);
 
     void displayInfo() const override;
-    int getId() const;
+    long long getId() const;
     std::string getSubscriptionType() const { return sub.getType(); }
+    const Subscription& getSubscription() const { return sub; }
+    void setSubscription(const Subscription& membershipType);
 };
 
 #endif

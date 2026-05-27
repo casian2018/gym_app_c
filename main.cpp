@@ -44,16 +44,14 @@ static std::ostream& operator<<(std::ostream &os, const Member &m) {
 
 static std::ostream& operator<<(std::ostream &os, const Trainer &t) {
     os << "Trainer[ID=" << t.getId() << ", Name=" << t.getName() << ", Age=" << t.getAge()
-       << ", Contact=" << t.getEmail() << "|" << t.getPhoneNumber() << ", Spec=]"; // specialization is not exposed by a getter
+       << ", Contact=" << t.getEmail() << "|" << t.getPhoneNumber() << ", Spec=" << t.getSpecialization() << "]";
     return os;
 }
 
 // Simple, human-friendly menu-driven CLI. Uses only public APIs of existing classes.
 int main(int argc, char** argv) {
-    // Default filename (can be overridden by CLI)
-    std::string filename = "gym.txt";
-
     // Quick CLI arg parsing: accept `--file <path>` or a single filename as first arg
+    std::string filename = "gym.txt";
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         if ((a == "--file" || a == "-f") && i + 1 < argc) {
@@ -63,11 +61,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    // Create fitness center using the filename as a default name (harmless)
-    Fitness_Center center("MyGym");
-
-    // Try loading existing data if available (Fitness_Center handles errors internally)
-    center.loadFromFile(filename);
+    // The center loads automatically from file and saves automatically after changes.
+    Fitness_Center center("MyGym", filename);
 
     // Main loop: menu
     while (true) {
@@ -75,8 +70,7 @@ int main(int argc, char** argv) {
         std::cout << "1) List all (members & trainers)\n";
         std::cout << "2) Add member\n";
         std::cout << "3) Add trainer\n";
-        std::cout << "4) Save to file\n";
-        std::cout << "5) Load from file\n";
+        std::cout << "4) Switch gym\n";
         std::cout << "0) Exit\n";
 
         int choice = promptNumber<int>("Select option: ");
@@ -92,7 +86,6 @@ int main(int argc, char** argv) {
         }
         else if (choice == 2) {
             std::cout << "Adaugă membru (următorii pași):\n";
-            int id = promptNumber<int>("  ID (numar): ");
             std::string name = readLine("  Name: ");
             int age = promptNumber<int>("  Age: ");
             std::string email = readLine("  Email: ");
@@ -100,7 +93,7 @@ int main(int argc, char** argv) {
             std::string subType = readLine("  Subscription type (Basic/Premium/Student): ");
 
             Subscription s(subType, "N/A");
-            Member m(id, name, age, email, phone, s);
+            Member m(name, age, email, phone, s);
             center.addMember(m);
             std::cout << "Membru adăugat: " << m << "\n";
         }
@@ -111,27 +104,28 @@ int main(int argc, char** argv) {
             std::string email = readLine("  Email: ");
             std::string phone = readLine("  Phone: ");
             std::string spec = readLine("  Specialization: ");
-            int id = promptNumber<int>("  Trainer ID (numar): ");
 
-            Trainer t(name, age, email, phone, spec, id);
+            Trainer t(name, age, email, phone, spec);
             center.addTrainer(t);
             std::cout << "Trainer adăugat: " << t << "\n";
         }
         else if (choice == 4) {
-            std::string out = readLine("Filename to save (enter for default: " + filename + "): ");
-            if (!out.empty()) filename = out;
-            center.saveToFile(filename);
-            std::cout << "Saved to " << filename << "\n";
-        }
-        else if (choice == 5) {
-            std::string inf = readLine("Filename to load (enter for default: " + filename + "): ");
-            if (!inf.empty()) filename = inf;
-            center.loadFromFile(filename);
+            std::string newGym = readLine("Numele noii săli: ");
+            if (newGym.empty()) {
+                std::cout << "Numele sălii nu poate fi gol.\n";
+                continue;
+            }
+
+            center.switchGym(newGym);
+            std::cout << "Ai trecut pe sala: " << newGym
+                      << " (fișier: " << center.getStorageFilename() << ")\n";
         }
         else {
             std::cout << "Opțiune necunoscută. Încearcă din nou." << std::endl;
         }
     }
+
+    center.saveToFile();
 
     return 0;
 }
