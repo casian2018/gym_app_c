@@ -4,6 +4,7 @@
 #include <iostream>
 
 Subscription::Subscription(std::string t,std::string v) : type(std::move(t)), validUntil(std::move(v)){
+    paymentStatus = "Paid";
     if (t == "Basic") {
         price = 120.0f;
     }
@@ -30,6 +31,10 @@ std::string Subscription::getValidation() const {
     return validUntil;
 }
 
+std::string Subscription::getPaymentStatus() const {
+    return paymentStatus;
+}
+
 void Subscription::setType(const std::string& t) {
     type = t;
     if (t == "Basic") {
@@ -49,6 +54,10 @@ void Subscription::setPrice(float newPrice) {
 
 void Subscription::setValidation(const std::string& v) {
     validUntil = v;
+}
+
+void Subscription::setPaymentStatus(const std::string& status) {
+    paymentStatus = status;
 }
 
 

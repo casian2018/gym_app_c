@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <iomanip>
 #include "../FitnessCenter/fitness_center.h"
 
 namespace {
@@ -21,6 +22,7 @@ constexpr int kBtnAdd = 2001;
 constexpr int kBtnCloseForm = 2002;
 constexpr int kBtnMembers = 3001;
 constexpr int kBtnTrainers = 3002;
+constexpr int kBtnDataClose = 3003;
 constexpr int kBtnPromptOk = 5001;
 constexpr int kBtnPromptCancel = 5002;
 constexpr int kEditName = 4001;
@@ -32,13 +34,17 @@ constexpr int kBtnApptBook = 6001;
 constexpr int kBtnApptClose = 6002;
 constexpr int kComboApptMember = 6003;
 constexpr int kComboApptTrainer = 6004;
-constexpr int kEditApptTime = 6005;
+constexpr int kDateApptTime = 6005;
+constexpr int kComboApptDate = 6006;
 constexpr int kBtnManageMembers = 7001;
 constexpr int kBtnManageTrainers = 7002;
 constexpr int kBtnManageAction1 = 7003;
 constexpr int kBtnManageAction2 = 7004;
 constexpr int kBtnManageAction3 = 7005;
 constexpr int kBtnManageClose = 7006;
+constexpr int kComboSubscriptionType = 8001;
+constexpr int kComboSubscriptionStatus = 8002;
+constexpr int kDateSubscriptionValid = 8003;
 
 constexpr COLORREF kHomeBg = RGB(26, 26, 31);
 constexpr COLORREF kHomeCard = RGB(38, 38, 48);
@@ -57,7 +63,13 @@ struct FormState {
     HWND phoneLabel = nullptr;
     HWND phoneEdit = nullptr;
     HWND extraLabel = nullptr;
+    HWND subscriptionTypeLabel = nullptr;
+    HWND subscriptionStatusLabel = nullptr;
+    HWND subscriptionValidLabel = nullptr;
     HWND extraEdit = nullptr;
+    HWND subscriptionTypeCombo = nullptr;
+    HWND subscriptionStatusCombo = nullptr;
+    HWND subscriptionValidPicker = nullptr;
     HWND subscriptionCombo = nullptr;
     HWND addButton = nullptr;
     HWND closeButton = nullptr;
@@ -89,8 +101,7 @@ struct AppointmentState {
     HWND memberCombo = nullptr;
     HWND trainerLabel = nullptr;
     HWND trainerCombo = nullptr;
-    HWND timeLabel = nullptr;
-    HWND timeEdit = nullptr;
+    HWND timePicker = nullptr;
     HWND addButton = nullptr;
     HWND closeButton = nullptr;
     HWND statusText = nullptr;
@@ -113,6 +124,7 @@ struct DataState {
     HWND titleText = nullptr;
     HWND membersButton = nullptr;
     HWND trainersButton = nullptr;
+    HWND closeButton = nullptr;
     HWND membersList = nullptr;
     HWND trainersList = nullptr;
     HWND statusText = nullptr;
@@ -142,7 +154,13 @@ struct PromptState {
     HWND edit = nullptr;
 };
 
+struct PaymentStatusState {
+    std::string status;
+    bool accepted = false;
+};
+
 LRESULT CALLBACK PromptProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK PaymentStatusProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 bool promptForText(HWND owner, const std::string &title, const std::string &label, std::string &value) {
     static bool promptClassRegistered = false;
@@ -287,6 +305,104 @@ std::string getComboSelectionText(HWND combo) {
     return text;
 }
 
+std::string formatSystemTime(const SYSTEMTIME& time) {
+    std::ostringstream out;
+    out << std::setfill('0') << std::setw(4) << time.wYear << '-'
+        << std::setw(2) << time.wMonth << '-'
+        << std::setw(2) << time.wDay;
+    return out.str();
+}
+
+std::string dayOfWeekText(const SYSTEMTIME& time) {
+    static const char* kDays[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+    if (time.wDayOfWeek < 7) {
+        return kDays[time.wDayOfWeek];
+    }
+    return "Day";
+}
+
+std::string getDatePickerText(HWND picker) {
+    SYSTEMTIME time{};
+    if (DateTime_GetSystemtime(picker, &time) != GDT_VALID) {
+        return {};
+    }
+    return formatSystemTime(time);
+}
+
+std::string getDatePickerWithDayText(HWND picker) {
+    SYSTEMTIME time{};
+    if (DateTime_GetSystemtime(picker, &time) != GDT_VALID) {
+        return {};
+    }
+    return formatSystemTime(time) + " (" + dayOfWeekText(time) + ")";
+}
+
+void setPickerToday(HWND picker) {
+    SYSTEMTIME time{};
+    GetLocalTime(&time);
+    DateTime_SetSystemtime(picker, GDT_VALID, &time);
+}
+
+void setPickerNextMonth(HWND picker) {
+    SYSTEMTIME time{};
+    GetLocalTime(&time);
+    if (time.wMonth == 12) {
+        time.wYear++;
+        time.wMonth = 1;
+    } else {
+        time.wMonth++;
+    }
+    DateTime_SetSystemtime(picker, GDT_VALID, &time);
+}
+
+bool promptForPaymentStatus(HWND owner, std::string& result) {
+    static bool statusClassRegistered = false;
+    if (!statusClassRegistered) {
+        WNDCLASSA statusWindow{};
+        statusWindow.lpfnWndProc = PaymentStatusProc;
+        statusWindow.hInstance = gInstance;
+        statusWindow.lpszClassName = "GymAppPaymentStatusClass";
+        statusWindow.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        statusWindow.hbrBackground = gHomeBrush;
+        if (!RegisterClassA(&statusWindow)) {
+            return false;
+        }
+        statusClassRegistered = true;
+    }
+
+    auto *state = new PaymentStatusState{};
+    HWND statusWindow = CreateWindowA("GymAppPaymentStatusClass", "Payment Status",
+                                      WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                                      CW_USEDEFAULT, CW_USEDEFAULT, 280, 120,
+                                      owner, nullptr, gInstance, state);
+    if (!statusWindow) {
+        delete state;
+        return false;
+    }
+
+    EnableWindow(owner, FALSE);
+
+    MSG msg{};
+    while (IsWindow(statusWindow) && GetMessageA(&msg, nullptr, 0, 0) > 0) {
+        if (!IsDialogMessageA(statusWindow, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessageA(&msg);
+        }
+    }
+
+    EnableWindow(owner, TRUE);
+    SetForegroundWindow(owner);
+
+    if (state->accepted) {
+        result = state->status;
+        delete state;
+        return true;
+    }
+
+    delete state;
+    return false;
+}
+
 void populateSubscriptionCombo(HWND combo) {
     if (!combo) {
         return;
@@ -371,10 +487,7 @@ void layoutHomeWindow(HWND hwnd, HomeState *state) {
     const int contentWidth = width > margin * 2 ? std::min(width - margin * 2, 900) : width;
     const int contentLeft = (width - contentWidth) / 2;
     const int buttonGap = 12;
-    int buttonWidth = (contentWidth - buttonGap * 2) / 3;
-    if (buttonWidth < 150) {
-        buttonWidth = 150;
-    }
+    const int buttonWidth = 150;
     const int buttonHeight = 38;
     const int titleHeight = 42;
     const int summaryHeight = 24;
@@ -389,21 +502,26 @@ void layoutHomeWindow(HWND hwnd, HomeState *state) {
     moveControl(state->summaryText, contentLeft, top + titleHeight + 8, titleWidth, summaryHeight);
     moveControl(state->switchButton, width - 156, 18, 132, 30);
 
-    const int buttonsTotal = buttonWidth * 3 + buttonGap * 2;
-    int startX = contentLeft + (contentWidth - buttonsTotal) / 2;
-    if (startX < contentLeft) {
-        startX = contentLeft;
+    const int topRowTotal = buttonWidth * 3 + buttonGap * 2;
+    int topStartX = contentLeft + (contentWidth - topRowTotal) / 2;
+    if (topStartX < contentLeft) {
+        topStartX = contentLeft;
     }
 
-    moveControl(state->memberButton, startX, row1Y, buttonWidth, buttonHeight);
-    moveControl(state->trainerButton, startX + buttonWidth + buttonGap, row1Y, buttonWidth, buttonHeight);
-    moveControl(state->dataButton, startX + (buttonWidth + buttonGap) * 2, row1Y, buttonWidth, buttonHeight);
-    moveControl(state->appointmentButton, startX, row2Y, buttonWidth, buttonHeight);
-    moveControl(state->manageButton, startX + buttonWidth + buttonGap, row2Y, buttonWidth, buttonHeight);
+    const int middleRowTotal = buttonWidth * 2 + buttonGap;
+    int middleStartX = contentLeft + (contentWidth - middleRowTotal) / 2;
+    if (middleStartX < contentLeft) {
+        middleStartX = contentLeft;
+    }
 
-    const int exitWidth = buttonWidth;
-    const int exitStartX = contentLeft + (contentWidth - exitWidth) / 2;
-    moveControl(state->exitButton, exitStartX, row3Y, exitWidth, buttonHeight);
+    moveControl(state->memberButton, topStartX, row1Y, buttonWidth, buttonHeight);
+    moveControl(state->trainerButton, topStartX + buttonWidth + buttonGap, row1Y, buttonWidth, buttonHeight);
+    moveControl(state->dataButton, topStartX + (buttonWidth + buttonGap) * 2, row1Y, buttonWidth, buttonHeight);
+    moveControl(state->appointmentButton, middleStartX, row2Y, buttonWidth, buttonHeight);
+    moveControl(state->manageButton, middleStartX + buttonWidth + buttonGap, row2Y, buttonWidth, buttonHeight);
+
+    const int exitStartX = contentLeft + (contentWidth - buttonWidth) / 2;
+    moveControl(state->exitButton, exitStartX, row3Y, buttonWidth, buttonHeight);
 }
 
 void layoutFormWindow(HWND hwnd, FormState *state) {
@@ -423,7 +541,6 @@ void layoutFormWindow(HWND hwnd, FormState *state) {
     const int rightPadding = 30;
     const int editWidth = contentWidth - 100 - rightPadding;
     const int rowHeight = 36;
-    const int comboHeight = 140;
 
     moveControl(state->titleText, contentLeft, 12, contentWidth, 24);
     moveControl(state->nameLabel, left, 24, labelWidth, 20);
@@ -436,11 +553,21 @@ void layoutFormWindow(HWND hwnd, FormState *state) {
     moveControl(state->phoneEdit, editX, 128, editWidth, 24);
     moveControl(state->extraLabel, left, 168, labelWidth, 20);
     if (state->memberMode) {
-        moveControl(state->subscriptionCombo, editX, 164, editWidth, comboHeight);
+        moveControl(state->subscriptionTypeLabel, left, 168, labelWidth, 20);
+        moveControl(state->subscriptionTypeCombo, editX, 164, editWidth, 24);
+        moveControl(state->subscriptionStatusLabel, left, 206, labelWidth, 20);
+        moveControl(state->subscriptionStatusCombo, editX, 202, editWidth, 24);
+        moveControl(state->subscriptionValidLabel, left, 244, labelWidth, 20);
+        moveControl(state->subscriptionValidPicker, editX, 240, editWidth, 24);
         moveControl(state->extraEdit, 0, 0, 0, 0);
     } else {
+        moveControl(state->subscriptionTypeLabel, 0, 0, 0, 0);
+        moveControl(state->subscriptionStatusLabel, 0, 0, 0, 0);
+        moveControl(state->subscriptionValidLabel, 0, 0, 0, 0);
         moveControl(state->extraEdit, editX, 164, editWidth, 24);
-        moveControl(state->subscriptionCombo, 0, 0, 0, 0);
+        moveControl(state->subscriptionTypeCombo, 0, 0, 0, 0);
+        moveControl(state->subscriptionStatusCombo, 0, 0, 0, 0);
+        moveControl(state->subscriptionValidPicker, 0, 0, 0, 0);
     }
 
     const int buttonWidth = 120;
@@ -450,9 +577,11 @@ void layoutFormWindow(HWND hwnd, FormState *state) {
     if (buttonStartX < left) {
         buttonStartX = left;
     }
-    moveControl(state->addButton, buttonStartX, 214, buttonWidth, 32);
-    moveControl(state->closeButton, buttonStartX + buttonWidth + buttonGap, 214, buttonWidth, 32);
-    moveControl(state->statusText, left, 258, width - left * 2, rowHeight);
+    const int buttonsY = state->memberMode ? 286 : 214;
+    const int statusY = state->memberMode ? 330 : 258;
+    moveControl(state->addButton, buttonStartX, buttonsY, buttonWidth, 32);
+    moveControl(state->closeButton, buttonStartX + buttonWidth + buttonGap, buttonsY, buttonWidth, 32);
+    moveControl(state->statusText, left, statusY, width - left * 2, rowHeight);
 }
 
 void layoutDataWindow(HWND hwnd, DataState *state) {
@@ -722,7 +851,7 @@ LRESULT CALLBACK HomeProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case kBtnMember: {
             if (!gMemberWindow) {
                 gMemberWindow = CreateWindowExA(WS_EX_TOOLWINDOW, "GymAppFormClass", "Add Member", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-                                                CW_USEDEFAULT, CW_USEDEFAULT, 560, 320, hwnd, nullptr, gInstance,
+                                    CW_USEDEFAULT, CW_USEDEFAULT, 560, 420, hwnd, nullptr, gInstance,
                                                 reinterpret_cast<LPVOID>(1));
             } else {
                 ShowWindow(gMemberWindow, SW_SHOW);
@@ -733,7 +862,7 @@ LRESULT CALLBACK HomeProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case kBtnTrainer: {
             if (!gTrainerWindow) {
                 gTrainerWindow = CreateWindowExA(WS_EX_TOOLWINDOW, "GymAppFormClass", "Add Trainer", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-                                                 CW_USEDEFAULT, CW_USEDEFAULT, 560, 320, hwnd, nullptr, gInstance,
+                                                 CW_USEDEFAULT, CW_USEDEFAULT, 560, 420, hwnd, nullptr, gInstance,
                                                  reinterpret_cast<LPVOID>(0));
             } else {
                 ShowWindow(gTrainerWindow, SW_SHOW);
@@ -897,8 +1026,9 @@ void populateManageMemberList(HWND listView) {
     column.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
     column.cx = 110; column.pszText = const_cast<LPSTR>("ID"); ListView_InsertColumn(listView, 0, &column);
     column.cx = 170; column.pszText = const_cast<LPSTR>("Name"); ListView_InsertColumn(listView, 1, &column);
-    column.cx = 170; column.pszText = const_cast<LPSTR>("Subscription"); ListView_InsertColumn(listView, 2, &column);
-    column.cx = 170; column.pszText = const_cast<LPSTR>("Valid Until"); ListView_InsertColumn(listView, 3, &column);
+    column.cx = 140; column.pszText = const_cast<LPSTR>("Subscription"); ListView_InsertColumn(listView, 2, &column);
+    column.cx = 120; column.pszText = const_cast<LPSTR>("Status"); ListView_InsertColumn(listView, 3, &column);
+    column.cx = 150; column.pszText = const_cast<LPSTR>("Valid Until"); ListView_InsertColumn(listView, 4, &column);
     ListView_DeleteAllItems(listView);
 
     const auto& members = gCenter.getMembers();
@@ -911,6 +1041,7 @@ void populateManageMemberList(HWND listView) {
         const std::string id = std::to_string(member->getId());
         const std::string name = member->getName();
         const std::string subscription = member->getSubscriptionType();
+        const std::string status = member->getSubscription().getPaymentStatus();
         const std::string validUntil = member->getSubscription().getValidation();
 
         LVITEMA item{};
@@ -921,7 +1052,8 @@ void populateManageMemberList(HWND listView) {
         ListView_InsertItem(listView, &item);
         ListView_SetItemText(listView, static_cast<int>(index), 1, const_cast<LPSTR>(name.c_str()));
         ListView_SetItemText(listView, static_cast<int>(index), 2, const_cast<LPSTR>(subscription.c_str()));
-        ListView_SetItemText(listView, static_cast<int>(index), 3, const_cast<LPSTR>(validUntil.c_str()));
+        ListView_SetItemText(listView, static_cast<int>(index), 3, const_cast<LPSTR>(status.c_str()));
+        ListView_SetItemText(listView, static_cast<int>(index), 4, const_cast<LPSTR>(validUntil.c_str()));
     }
 }
 
@@ -980,29 +1112,37 @@ LRESULT CALLBACK AppointmentProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
         newState->trainerCombo = CreateWindowExA(WS_EX_CLIENTEDGE, "COMBOBOX", "",
                                                  WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
                                                  120, 92, 360, 160, hwnd, reinterpret_cast<HMENU>(kComboApptTrainer), gInstance, nullptr);
-        newState->timeLabel = CreateWindowA("STATIC", "Time slot:", WS_CHILD | WS_VISIBLE, 20, 134, 90, 20, hwnd, nullptr, gInstance, nullptr);
-        newState->timeEdit = CreateWindowA("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
-                                           120, 130, 240, 24, hwnd, reinterpret_cast<HMENU>(kEditApptTime), gInstance, nullptr);
+        newState->timePicker = CreateWindowExA(WS_EX_CLIENTEDGE, DATETIMEPICK_CLASSA, "",
+                                                                                             WS_CHILD | WS_VISIBLE | DTS_SHORTDATEFORMAT,
+                                                                                             120, 134, 240, 24, hwnd, reinterpret_cast<HMENU>(kDateApptTime), gInstance, nullptr);
         newState->addButton = CreateWindowA("BUTTON", "Book", WS_CHILD | WS_VISIBLE,
-                                            120, 176, 110, 30, hwnd, reinterpret_cast<HMENU>(kBtnApptBook), gInstance, nullptr);
+                                                                                        120, 176, 110, 30, hwnd, reinterpret_cast<HMENU>(kBtnApptBook), gInstance, nullptr);
         newState->closeButton = CreateWindowA("BUTTON", "Close", WS_CHILD | WS_VISIBLE,
-                                              240, 176, 110, 30, hwnd, reinterpret_cast<HMENU>(kBtnApptClose), gInstance, nullptr);
-        newState->statusText = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 20, 220, 460, 20, hwnd, nullptr, gInstance, nullptr);
+                                                                                            240, 176, 110, 30, hwnd, reinterpret_cast<HMENU>(kBtnApptClose), gInstance, nullptr);
+                newState->statusText = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 20, 220, 460, 20, hwnd, nullptr, gInstance, nullptr);
 
         applyFont(newState->titleText, gTitleFont);
         applyFont(newState->memberLabel, gBodyFont);
         applyFont(newState->memberCombo, gBodyFont);
         applyFont(newState->trainerLabel, gBodyFont);
         applyFont(newState->trainerCombo, gBodyFont);
-        applyFont(newState->timeLabel, gBodyFont);
-        applyFont(newState->timeEdit, gBodyFont);
+        applyFont(newState->timePicker, gBodyFont);
         applyFont(newState->addButton, gButtonFont);
         applyFont(newState->closeButton, gButtonFont);
         applyFont(newState->statusText, gBodyFont);
 
         populateMemberTrainerCombos(newState->memberCombo, newState->trainerCombo);
+        setPickerToday(newState->timePicker);
         centerWindow(hwnd, gHomeWindow);
         return 0;
+    }
+    case WM_NOTIFY: {
+        auto* nmhdr = reinterpret_cast<NMHDR*>(lParam);
+        if (nmhdr && nmhdr->idFrom == kDateApptTime && nmhdr->code == DTN_DATETIMECHANGE) {
+            auto* dateState = reinterpret_cast<AppointmentState*>(GetWindowLongPtrA(hwnd, GWLP_USERDATA));
+            (void)dateState;
+        }
+        break;
     }
     case WM_COMMAND:
         switch (LOWORD(wParam)) {
@@ -1012,11 +1152,11 @@ LRESULT CALLBACK AppointmentProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             }
             const std::string memberText = getComboSelectionText(state->memberCombo);
             const std::string trainerText = getComboSelectionText(state->trainerCombo);
-            const std::string timeSlot = getText(state->timeEdit);
+            const std::string timeSlot = getDatePickerWithDayText(state->timePicker);
             const long long memberId = parseIdFromComboText(memberText);
             const long long trainerId = parseIdFromComboText(trainerText);
             if (memberId == 0 || trainerId == 0 || timeSlot.empty()) {
-                setText(state->statusText, "Pick a member, a trainer, and fill the time slot.");
+                setText(state->statusText, "Pick a member, a trainer, and a date.");
                 return 0;
             }
 
@@ -1024,7 +1164,7 @@ LRESULT CALLBACK AppointmentProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             setText(state->statusText, "Appointment saved automatically.");
             refreshManageWindow();
             populateMemberTrainerCombos(state->memberCombo, state->trainerCombo);
-            setText(state->timeEdit, "");
+            setPickerToday(state->timePicker);
             return 0;
         }
         case kBtnApptClose:
@@ -1170,6 +1310,7 @@ LRESULT CALLBACK ManageProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 const long long memberId = getSelectedListViewId(state->listView);
                 if (memberId != 0) {
                     Subscription subscription("Cancelled", "N/A");
+                    subscription.setPaymentStatus("Cancelled");
                     gCenter.updateMemberSubscription(memberId, subscription);
                     refreshManageWindow();
                     refreshDataWindow();
@@ -1191,18 +1332,13 @@ LRESULT CALLBACK ManageProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if (state->showingMembers) {
                 const long long memberId = getSelectedListViewId(state->listView);
                 if (memberId != 0) {
-                    std::string statusText;
-                    if (promptForText(hwnd, "Set Membership Status", "Enter paid until date or late note:", statusText) && !statusText.empty()) {
+                    std::string paymentStatus;
+                    if (promptForPaymentStatus(hwnd, paymentStatus)) {
                         auto members = gCenter.getMembers();
                         for (const auto& member : members) {
                             if (member && member->getId() == memberId) {
                                 Subscription subscription = member->getSubscription();
-                                subscription.setValidation(statusText);
-                                if (statusText.find("late") != std::string::npos || statusText.find("Late") != std::string::npos) {
-                                    subscription.setType("Late");
-                                } else {
-                                    subscription.setType(subscription.getType().empty() ? "Basic" : subscription.getType());
-                                }
+                                subscription.setPaymentStatus(paymentStatus);
                                 gCenter.updateMemberSubscription(memberId, subscription);
                                 break;
                             }
@@ -1288,6 +1424,54 @@ LRESULT CALLBACK PromptProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return 0;
 }
 
+LRESULT CALLBACK PaymentStatusProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    auto *state = reinterpret_cast<PaymentStatusState*>(GetWindowLongPtrA(hwnd, GWLP_USERDATA));
+
+    switch (msg) {
+    case WM_CREATE: {
+        auto *createStruct = reinterpret_cast<CREATESTRUCTA*>(lParam);
+        auto *newState = reinterpret_cast<PaymentStatusState*>(createStruct->lpCreateParams);
+        SetWindowLongPtrA(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(newState));
+
+        CreateWindowA("STATIC", "Select payment status:", WS_CHILD | WS_VISIBLE, 20, 16, 240, 20, hwnd, nullptr, gInstance, nullptr);
+        HWND paidButton = CreateWindowA("BUTTON", "Paid", WS_CHILD | WS_VISIBLE, 60, 50, 80, 32, hwnd, reinterpret_cast<HMENU>(7050), gInstance, nullptr);
+        HWND lateButton = CreateWindowA("BUTTON", "Late", WS_CHILD | WS_VISIBLE, 160, 50, 80, 32, hwnd, reinterpret_cast<HMENU>(7051), gInstance, nullptr);
+        applyFont(paidButton, gButtonFont);
+        applyFont(lateButton, gButtonFont);
+        return 0;
+    }
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case 7050:
+            if (state) {
+                state->status = "Paid";
+                state->accepted = true;
+            }
+            DestroyWindow(hwnd);
+            return 0;
+        case 7051:
+            if (state) {
+                state->status = "Late";
+                state->accepted = true;
+            }
+            DestroyWindow(hwnd);
+            return 0;
+        default:
+            break;
+        }
+        break;
+    case WM_CLOSE:
+        DestroyWindow(hwnd);
+        return 0;
+    case WM_DESTROY:
+        SetWindowLongPtrA(hwnd, GWLP_USERDATA, 0);
+        return 0;
+    default:
+        return DefWindowProcA(hwnd, msg, wParam, lParam);
+    }
+    return 0;
+}
+
 void populateFormControls(HWND hwnd, FormState *state, bool memberMode) {
     const char *title = memberMode ? "Add a member" : "Add a trainer";
     const char *extraLabel = memberMode ? "Subscription" : "Specialization";
@@ -1310,9 +1494,21 @@ void populateFormControls(HWND hwnd, FormState *state, bool memberMode) {
 
     state->extraLabel = CreateWindowA("STATIC", extraLabel, WS_CHILD | WS_VISIBLE, 30, 168, 90, 20, hwnd, nullptr, gInstance, nullptr);
     if (memberMode) {
-        state->subscriptionCombo = CreateWindowExA(0, "COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
-                                                  130, 164, 360, 140, hwnd, reinterpret_cast<HMENU>(kEditExtra), gInstance, nullptr);
-        populateSubscriptionCombo(state->subscriptionCombo);
+        state->subscriptionTypeLabel = CreateWindowA("STATIC", "Type:", WS_CHILD | WS_VISIBLE, 30, 206, 90, 20, hwnd, nullptr, gInstance, nullptr);
+        state->subscriptionTypeCombo = CreateWindowExA(0, "COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
+                                                       130, 164, 360, 120, hwnd, reinterpret_cast<HMENU>(kComboSubscriptionType), gInstance, nullptr);
+        state->subscriptionStatusLabel = CreateWindowA("STATIC", "Status:", WS_CHILD | WS_VISIBLE, 30, 244, 90, 20, hwnd, nullptr, gInstance, nullptr);
+        state->subscriptionStatusCombo = CreateWindowExA(0, "COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
+                                                        130, 202, 360, 120, hwnd, reinterpret_cast<HMENU>(kComboSubscriptionStatus), gInstance, nullptr);
+        state->subscriptionValidLabel = CreateWindowA("STATIC", "Valid until:", WS_CHILD | WS_VISIBLE, 30, 282, 90, 20, hwnd, nullptr, gInstance, nullptr);
+        state->subscriptionValidPicker = CreateWindowExA(WS_EX_CLIENTEDGE, DATETIMEPICK_CLASSA, "",
+                                                        WS_CHILD | WS_VISIBLE | DTS_SHORTDATEFORMAT,
+                                                        130, 240, 220, 24, hwnd, reinterpret_cast<HMENU>(kDateSubscriptionValid), gInstance, nullptr);
+        populateSubscriptionCombo(state->subscriptionTypeCombo);
+        SendMessageA(state->subscriptionStatusCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("Paid"));
+        SendMessageA(state->subscriptionStatusCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("Late"));
+        SendMessageA(state->subscriptionStatusCombo, CB_SETCURSEL, 0, 0);
+        setPickerNextMonth(state->subscriptionValidPicker);
     } else {
         state->extraEdit = CreateWindowA("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 130, 164, 360, 24, hwnd,
                                          reinterpret_cast<HMENU>(kEditExtra), gInstance, nullptr);
@@ -1332,8 +1528,23 @@ void populateFormControls(HWND hwnd, FormState *state, bool memberMode) {
     applyFont(state->ageEdit, gBodyFont);
     applyFont(state->emailEdit, gBodyFont);
     applyFont(state->phoneEdit, gBodyFont);
-    if (state->subscriptionCombo) {
-        applyFont(state->subscriptionCombo, gBodyFont);
+    if (state->subscriptionTypeLabel) {
+        applyFont(state->subscriptionTypeLabel, gBodyFont);
+    }
+    if (state->subscriptionStatusLabel) {
+        applyFont(state->subscriptionStatusLabel, gBodyFont);
+    }
+    if (state->subscriptionValidLabel) {
+        applyFont(state->subscriptionValidLabel, gBodyFont);
+    }
+    if (state->subscriptionTypeCombo) {
+        applyFont(state->subscriptionTypeCombo, gBodyFont);
+    }
+    if (state->subscriptionStatusCombo) {
+        applyFont(state->subscriptionStatusCombo, gBodyFont);
+    }
+    if (state->subscriptionValidPicker) {
+        applyFont(state->subscriptionValidPicker, gBodyFont);
     }
     if (state->extraEdit) {
         applyFont(state->extraEdit, gBodyFont);
@@ -1352,7 +1563,32 @@ void handleFormAdd(HWND hwnd, FormState *state) {
     std::string extra;
 
     if (state->memberMode) {
-        extra = getComboSelectionText(state->subscriptionCombo);
+        const std::string subType = getComboSelectionText(state->subscriptionTypeCombo);
+        const std::string paymentStatus = getComboSelectionText(state->subscriptionStatusCombo);
+        const std::string validUntil = getDatePickerText(state->subscriptionValidPicker);
+        extra = subType;
+
+        if (subType.empty() || paymentStatus.empty() || validUntil.empty()) {
+            showFormStatus(state->statusText, "Select subscription, payment status, and date.");
+            return;
+        }
+
+        Subscription sub(subType, validUntil);
+        sub.setPaymentStatus(paymentStatus);
+        Member member(name, age, email, phone, sub);
+        gCenter.addMember(member);
+        showFormStatus(state->statusText, "Member saved automatically.");
+
+        refreshHomeSummary();
+        refreshDataWindow();
+        setText(state->nameEdit, "");
+        setText(state->ageEdit, "");
+        setText(state->emailEdit, "");
+        setText(state->phoneEdit, "");
+        populateSubscriptionCombo(state->subscriptionTypeCombo);
+        SendMessageA(state->subscriptionStatusCombo, CB_SETCURSEL, 0, 0);
+        setPickerToday(state->subscriptionValidPicker);
+        return;
     } else {
         extra = getText(state->extraEdit);
     }
@@ -1362,12 +1598,7 @@ void handleFormAdd(HWND hwnd, FormState *state) {
         return;
     }
 
-    if (state->memberMode) {
-        Subscription sub(extra, "N/A");
-        Member member(name, age, email, phone, sub);
-        gCenter.addMember(member);
-        showFormStatus(state->statusText, "Member saved automatically.");
-    } else {
+    if (!state->memberMode) {
         Trainer trainer(name, age, email, phone, extra);
         gCenter.addTrainer(trainer);
         showFormStatus(state->statusText, "Trainer saved automatically.");
@@ -1380,9 +1611,6 @@ void handleFormAdd(HWND hwnd, FormState *state) {
     setText(state->emailEdit, "");
     setText(state->phoneEdit, "");
     setText(state->extraEdit, "");
-    if (state->subscriptionCombo) {
-        SendMessageA(state->subscriptionCombo, CB_SETCURSEL, 0, 0);
-    }
 }
 
 LRESULT CALLBACK FormProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -1557,6 +1785,7 @@ LRESULT CALLBACK DataProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         newState->titleText = CreateWindowA("STATIC", "Data Explorer", WS_CHILD | WS_VISIBLE | SS_CENTER, 24, 16, 860, 26, hwnd, nullptr, gInstance, nullptr);
         newState->membersButton = CreateWindowA("BUTTON", "Members", WS_CHILD | WS_VISIBLE, 24, 48, 110, 28, hwnd, reinterpret_cast<HMENU>(kBtnMembers), gInstance, nullptr);
         newState->trainersButton = CreateWindowA("BUTTON", "Trainers", WS_CHILD | WS_VISIBLE, 144, 48, 110, 28, hwnd, reinterpret_cast<HMENU>(kBtnTrainers), gInstance, nullptr);
+        newState->closeButton = CreateWindowA("BUTTON", "Close", WS_CHILD | WS_VISIBLE, 800, 48, 104, 28, hwnd, reinterpret_cast<HMENU>(kBtnDataClose), gInstance, nullptr);
 
         newState->membersList = CreateWindowExA(WS_EX_CLIENTEDGE, WC_LISTVIEWA, "", WS_CHILD | WS_VISIBLE | LVS_REPORT,
                                                 24, 90, 880, 430, hwnd, nullptr, gInstance, nullptr);
@@ -1569,6 +1798,7 @@ LRESULT CALLBACK DataProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         applyFont(newState->titleText, gTitleFont);
         applyFont(newState->membersButton, gButtonFont);
         applyFont(newState->trainersButton, gButtonFont);
+        applyFont(newState->closeButton, gButtonFont);
         applyFont(newState->statusText, gBodyFont);
         layoutDataWindow(hwnd, newState);
         refreshDataWindow();
@@ -1579,6 +1809,18 @@ LRESULT CALLBACK DataProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         layoutDataWindow(hwnd, state);
         refreshDataWindow();
         return 0;
+    case WM_CTLCOLORSTATIC: {
+        HDC hdc = reinterpret_cast<HDC>(wParam);
+        SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, kWhite);
+        return reinterpret_cast<LRESULT>(gHomeBrush);
+    }
+    case WM_ERASEBKGND: {
+        RECT rect{};
+        GetClientRect(hwnd, &rect);
+        FillRect(reinterpret_cast<HDC>(wParam), &rect, gHomeBrush);
+        return 1;
+    }
     case WM_COMMAND:
         switch (LOWORD(wParam)) {
         case kBtnMembers:
@@ -1592,6 +1834,9 @@ LRESULT CALLBACK DataProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 state->showingMembers = false;
                 refreshDataWindow();
             }
+            return 0;
+        case kBtnDataClose:
+            DestroyWindow(hwnd);
             return 0;
         default:
             break;
@@ -1632,7 +1877,7 @@ void registerClasses() {
     data.hInstance = gInstance;
     data.lpszClassName = "GymAppDataClass";
     data.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    data.hbrBackground = gDataBrush;
+    data.hbrBackground = gHomeBrush;
     RegisterClassA(&data);
 
     WNDCLASSA appointment{};
@@ -1692,7 +1937,7 @@ int APIENTRY WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int showCmd) {
 
     INITCOMMONCONTROLSEX controls{};
     controls.dwSize = sizeof(controls);
-    controls.dwICC = ICC_LISTVIEW_CLASSES;
+    controls.dwICC = ICC_LISTVIEW_CLASSES | ICC_DATE_CLASSES;
     InitCommonControlsEx(&controls);
 
     createBrushes();

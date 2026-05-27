@@ -51,6 +51,8 @@ public:
     void loadFromFile(const std::string& filename);
     void switchGym(const std::string& newGymName);
     std::vector<std::string> getAvailableGyms() const;
+    void saveGymList();
+    void loadGymList();
     bool removeMember(long long memberId);
     bool removeTrainer(long long trainerId);
     bool updateMemberSubscription(long long memberId, const Subscription& subscription);

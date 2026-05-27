@@ -34,6 +34,7 @@ std::string makeStorageFilename(const std::string& gymName) {
 
 Fitness_Center::Fitness_Center(std::string n, std::string storageFile)
     : gymName(std::move(n)), storageFilename(std::move(storageFile)), loadingFromFile(false) {
+    loadGymList();
     loadFromFile();
 }
 
@@ -102,7 +103,10 @@ void Fitness_Center::saveToFile(const std::string& filename) {
     }
 
     for (const auto& m : members) {
-        file << "M "<< m->getId() << " "<<m->getName() << " " << m->getAge() << " " << m->getEmail() << " " << m->getPhoneNumber() <<" "<< m->getSubscriptionType() << "\n\n";
+        const auto& subscription = m->getSubscription();
+        file << "M " << m->getId() << " " << m->getName() << " " << m->getAge() << " " << m->getEmail() << " "
+             << m->getPhoneNumber() << " " << subscription.getType() << " " << subscription.getValidation() << " "
+             << subscription.getPaymentStatus() << "\n";
     }
 
     for (const auto& t : trainers) {
@@ -124,6 +128,7 @@ void Fitness_Center::loadFromFile(const std::string &filename) {
     storageFilename = filename;
     members.clear();
     trainers.clear();
+    appointments.clear();
 
     std::ifstream file(filename);
 
@@ -134,37 +139,43 @@ void Fitness_Center::loadFromFile(const std::string &filename) {
 
     loadingFromFile = true;
 
-    char type;
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.empty()) {
+            continue;
+        }
 
-    while (file >> type) {
+        std::istringstream iss(line);
+        char type = 0;
+        iss >> type;
+
         if (type == 'M') {
-            long long id;
-            int age;
-            std::string name,email,phone,subType;
+            long long id = 0;
+            int age = 0;
+            std::string name, email, phone, subType, validUntil, paymentStatus;
+            iss >> id >> name >> age >> email >> phone >> subType >> validUntil;
+            if (!(iss >> paymentStatus)) {
+                paymentStatus = "Paid";
+            }
 
-            file >> id >> name >> age >> email >> phone >> subType;
-
-            Subscription subTemp(subType, "N/A");
-            Member newMem(id, name, age, email, phone, subTemp);
-            addMember(newMem);
-        }
-        else if (type == 'T') {
-            long long tId;
-            int age;
+            Subscription subTemp(subType, validUntil);
+            subTemp.setPaymentStatus(paymentStatus);
+            members.push_back(std::make_shared<Member>(id, name, age, email, phone, subTemp));
+        } else if (type == 'T') {
+            long long tId = 0;
+            int age = 0;
             std::string name, email, phone, specialization;
-
-            file >> tId >> name >> age >> email >> phone >> specialization;
-            Trainer newTr(tId, name, age, email, phone, specialization);
-
-            addTrainer(newTr);
-        }
-        else if (type == 'A') {
+            iss >> tId >> name >> age >> email >> phone >> specialization;
+            trainers.push_back(std::make_shared<Trainer>(tId, name, age, email, phone, specialization));
+        } else if (type == 'A') {
             Appointment app{};
-            file >> app.memberId >> app.trainerId >> app.timeSlot;
-            appointments.push_back(app);
+            iss >> app.memberId >> app.trainerId >> app.timeSlot;
+            if (app.memberId != 0 && app.trainerId != 0 && !app.timeSlot.empty()) {
+                appointments.push_back(app);
+            }
         }
-
     }
+
     loadingFromFile = false;
     cacheCurrentGym();
     }
@@ -179,6 +190,7 @@ void Fitness_Center::switchGym(const std::string& newGymName) {
     const auto cached = gymCache.find(gymName);
     if (cached != gymCache.end()) {
         restoreGymProfile(cached->second);
+        saveGymList();
         return;
     }
 
@@ -193,6 +205,40 @@ void Fitness_Center::switchGym(const std::string& newGymName) {
     }
 
     cacheCurrentGym();
+    saveGymList();
+}
+
+void Fitness_Center::saveGymList() {
+    std::ofstream file("gyms_list.txt");
+    if (!file.is_open()) {
+        return;
+    }
+    for (const auto& p : gymCache) {
+        file << p.first << "\n";
+    }
+    if (gymCache.find(gymName) == gymCache.end()) {
+        file << gymName << "\n";
+    }
+}
+
+void Fitness_Center::loadGymList() {
+    std::ifstream file("gyms_list.txt");
+    if (!file.is_open()) {
+        return;
+    }
+    std::string line;
+    while (std::getline(file, line)) {
+        if (!line.empty()) {
+            const std::string filename = makeStorageFilename(line);
+            std::ifstream dataFile(filename);
+            if (dataFile.is_open()) {
+                dataFile.close();
+                GymProfile profile;
+                profile.storageFilename = filename;
+                gymCache[line] = profile;
+            }
+        }
+    }
 }
 
 bool Fitness_Center::removeMember(long long memberId) {
