@@ -6,6 +6,7 @@
 #include <ctime>
 
 namespace {
+/// @brief Gets current date stamp in YYYYMMDD format.
 long long currentDateStamp() {
         const auto now = std::chrono::system_clock::now();
         const std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
@@ -23,11 +24,13 @@ long long currentDateStamp() {
         return year * 10000LL + month * 100LL + day;
 }
 
-long long trainerSequence = 0;
-long long trainerSequenceDate = 0;
+long long trainerSequence = 0;      ///< Counter for trainers added today
+long long trainerSequenceDate = 0;  ///< Date when sequence started
 
+/// @brief Generates unique Trainer ID (date-based + sequence number).
 long long generateTrainerId() {
         const long long dateStamp = currentDateStamp();
+        // Reset sequence if new day
         if (dateStamp != trainerSequenceDate) {
                 trainerSequenceDate = dateStamp;
                 trainerSequence = 1;
@@ -37,6 +40,7 @@ long long generateTrainerId() {
         return dateStamp * 10000LL + trainerSequence;
 }
 
+/// @brief Synchronizes ID counter when loading existing trainers.
 void syncTrainerId(long long id) {
         const long long dateStamp = id / 10000LL;
         const long long sequence = id % 10000LL;
@@ -47,14 +51,17 @@ void syncTrainerId(long long id) {
 }
 }
 
+/// @brief Constructor with explicit ID (used when loading from file).
 Trainer::Trainer(long long id, std::string n, int a, std::string e, std::string p, std::string s)
         : Person(std::move(n), a, std::move(e), std::move(p)), specialization(std::move(s)), trainerId(id) {
         syncTrainerId(trainerId);
 }
 
+/// @brief Constructor that auto-generates unique ID.
 Trainer::Trainer(std::string n, int a, std::string e, std::string p, std::string s)
         : Person(std::move(n), a, std::move(e), std::move(p)), specialization(std::move(s)), trainerId(generateTrainerId()) {}
 
+/// @brief Displays trainer profile with all details.
 void Trainer::displayInfo() const {
                 std::cout << "--------------------------" << std::endl;
                 std::cout << "TRAINER PROFILE" << std::endl;

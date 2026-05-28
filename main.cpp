@@ -4,7 +4,7 @@
 #include <limits>
 #include <sstream>
 
-// Human-friendly helper: read a line of text (allows spaces)
+/// @brief Helper function to read a line of text (allows spaces and special characters).
 static std::string readLine(const std::string &prompt) {
     std::string s;
     std::cout << prompt;
@@ -12,7 +12,8 @@ static std::string readLine(const std::string &prompt) {
     return s;
 }
 
-// Template helper: prompt for numeric values and validate input
+/// @brief Template helper: prompts for numeric values and validates input.
+/// Keeps asking until valid number is entered.
 template<typename T>
 T promptNumber(const std::string &prompt) {
     T value;
@@ -26,45 +27,48 @@ T promptNumber(const std::string &prompt) {
         }
         std::istringstream iss(line);
         if (iss >> value) return value;
-        std::cout << "Valoare invalidă. Încearcă din nou.\n";
+        std::cout << "Invalid value. Try again.\n";
     }
 }
 
-// operator<< overloads to make display/printing easy and consistent
+/// @brief operator<< for Subscription - makes printing easy with cout.
 static std::ostream& operator<<(std::ostream &os, const Subscription &s) {
     os << "Subscription(type=" << s.getType() << ", price=" << s.getPrice() << ", validUntil=" << s.getValidation() << ")";
     return os;
 }
 
+/// @brief operator<< for Member - displays member info in compact format.
 static std::ostream& operator<<(std::ostream &os, const Member &m) {
     os << "Member[ID=" << m.getId() << ", Name=" << m.getName() << ", Age=" << m.getAge()
        << ", Contact=" << m.getEmail() << "|" << m.getPhoneNumber() << ", Sub=" << m.getSubscriptionType() << "]";
     return os;
 }
 
+/// @brief operator<< for Trainer - displays trainer info in compact format.
 static std::ostream& operator<<(std::ostream &os, const Trainer &t) {
     os << "Trainer[ID=" << t.getId() << ", Name=" << t.getName() << ", Age=" << t.getAge()
        << ", Contact=" << t.getEmail() << "|" << t.getPhoneNumber() << ", Spec=" << t.getSpecialization() << "]";
     return os;
 }
 
-// Simple, human-friendly menu-driven CLI. Uses only public APIs of existing classes.
+/// @brief Main entry point - CLI menu-driven application.
+/// Handles command-line arguments for file selection.
 int main(int argc, char** argv) {
-    // Quick CLI arg parsing: accept `--file <path>` or a single filename as first arg
+    // Parse command-line arguments: --file <path> or filename as first arg
     std::string filename = "gym.txt";
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         if ((a == "--file" || a == "-f") && i + 1 < argc) {
             filename = argv[++i];
         } else if (i == 1) {
-            filename = a; // first positional argument is treated as filename
+            filename = a; // first positional argument is filename
         }
     }
 
-    // The center loads automatically from file and saves automatically after changes.
+    // Create fitness center - loads automatically from file
     Fitness_Center center("MyGym", filename);
 
-    // Main loop: menu
+    // Main menu loop
     while (true) {
         std::cout << "\n=== GYM APP ===\n";
         std::cout << "1) List all (members & trainers)\n";
@@ -76,16 +80,17 @@ int main(int argc, char** argv) {
         int choice = promptNumber<int>("Select option: ");
 
         if (choice == 0) {
-            std::cout << "La revedere!\n";
+            std::cout << "Goodbye!\n";
             break;
         }
 
         if (choice == 1) {
-            // Use existing displayAll implementation
+            // Display all members and trainers
             center.displayAll();
         }
         else if (choice == 2) {
-            std::cout << "Adaugă membru (următorii pași):\n";
+            // Add new member
+            std::cout << "Add member (next steps):\n";
             std::string name = readLine("  Name: ");
             int age = promptNumber<int>("  Age: ");
             std::string email = readLine("  Email: ");
@@ -95,10 +100,11 @@ int main(int argc, char** argv) {
             Subscription s(subType, "N/A");
             Member m(name, age, email, phone, s);
             center.addMember(m);
-            std::cout << "Membru adăugat: " << m << "\n";
+            std::cout << "Member added: " << m << "\n";
         }
         else if (choice == 3) {
-            std::cout << "Adaugă trainer:\n";
+            // Add new trainer
+            std::cout << "Add trainer:\n";
             std::string name = readLine("  Name: ");
             int age = promptNumber<int>("  Age: ");
             std::string email = readLine("  Email: ");
@@ -107,24 +113,26 @@ int main(int argc, char** argv) {
 
             Trainer t(name, age, email, phone, spec);
             center.addTrainer(t);
-            std::cout << "Trainer adăugat: " << t << "\n";
+            std::cout << "Trainer added: " << t << "\n";
         }
         else if (choice == 4) {
-            std::string newGym = readLine("Numele noii săli: ");
+            // Switch to different gym
+            std::string newGym = readLine("New gym name: ");
             if (newGym.empty()) {
-                std::cout << "Numele sălii nu poate fi gol.\n";
+                std::cout << "Gym name cannot be empty.\n";
                 continue;
             }
 
             center.switchGym(newGym);
-            std::cout << "Ai trecut pe sala: " << newGym
-                      << " (fișier: " << center.getStorageFilename() << ")\n";
+            std::cout << "Switched to gym: " << newGym
+                      << " (file: " << center.getStorageFilename() << ")\n";
         }
         else {
-            std::cout << "Opțiune necunoscută. Încearcă din nou." << std::endl;
+            std::cout << "Unknown option. Try again." << std::endl;
         }
     }
 
+    // Save before exit
     center.saveToFile();
 
     return 0;
