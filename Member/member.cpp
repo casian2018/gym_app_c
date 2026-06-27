@@ -8,7 +8,7 @@ using namespace std;
 
 namespace {
 /// @brief Gets current date stamp in YYYYMMDD format.
-std::string currentDateStamp() {
+long long currentDateStamp() {
     const auto now = std::chrono::system_clock::now();
     const std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
     std::tm localTime{};
